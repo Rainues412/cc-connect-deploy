@@ -2,7 +2,17 @@
 const { spawn } = require("child_process");
 const path = require("path");
 const readline = require("readline");
-const NOTICE = "当前 Claude 3.7 接口的图片链路未通过验证。为避免图片导致后续对话持续报错，本次图片未送入模型，上下文已保留。请把图片内容转成文字后再发送。";
+const NOTICE = "当前模型接口的图片链路未通过验证。为避免图片导致后续对话持续报错，本次图片未送入模型，上下文已保留。请把图片内容转成文字后再发送。";
+
+// Allow only the exact model whose image route has passed a live API and CLI test.
+function supportsImages(args) {
+  const index = args.lastIndexOf("--model");
+  return index >= 0 && args[index + 1] === "qwen3.8-max";
+}
+
+function buildClaudeArgs(args) {
+  return supportsImages(args) ? args : [...args, "--settings", path.join(__dirname, "image-guard-settings.json")];
+}
 
 function containsImage(value) {
   if (!value || typeof value !== "object") return false;
@@ -37,7 +47,7 @@ function createBridge({ args, launch, output, errorOutput }) {
     accept(line) {
       let message;
       try { message = JSON.parse(line); } catch { throw new Error("Invalid Claude bridge input JSON"); }
-      if (message.type === "user" && containsImage(message.message?.content)) {
+      if (!supportsImages(args) && message.type === "user" && containsImage(message.message?.content)) {
         // No image, placeholder user turn, or error body enters Claude's transcript.
         output(JSON.stringify({ type: "result", subtype: "success", is_error: false, result: NOTICE, session_id: sessionId }) + "\n");
         return;
@@ -67,8 +77,7 @@ async function main() {
   const bridge = createBridge({
     args,
     launch(actualArgs) {
-      const settings = path.join(__dirname, "image-guard-settings.json");
-      const child = spawn(binary, [...actualArgs, "--settings", settings], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
+      const child = spawn(binary, buildClaudeArgs(actualArgs), { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
       child.on("error", () => { process.stderr.write("Claude executable could not start\n"); process.exitCode = 1; process.stdin.destroy(); });
       child.on("exit", code => { process.exitCode = code ?? 1; process.stdin.destroy(); });
       return child;
@@ -82,5 +91,5 @@ async function main() {
   input.on("close", () => bridge.close());
 }
 
-module.exports = { containsImage, toolDecision, createBridge, NOTICE };
+module.exports = { containsImage, toolDecision, createBridge, supportsImages, buildClaudeArgs, NOTICE };
 if (require.main === module) main().catch(() => { process.stderr.write("Claude image guard failed\n"); process.exitCode = 1; });

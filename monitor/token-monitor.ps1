@@ -1,4 +1,5 @@
-﻿# Read-only account health monitor, supervised by PM2.
+﻿#requires -Version 7.0
+# Read-only account health monitor, supervised by Windows Task Scheduler.
 $ErrorActionPreference='Stop'
 . 'D:\coding\cc-connect-deploy\scripts\runtime-common.ps1'
 $StatePath=Join-Path $script:CcRuntime 'monitor-status.json'
@@ -80,11 +81,15 @@ function Test-CcCredential($Account){
 }
 function Show-CcNotice([string]$Body){
     try{
-        [Windows.UI.Notifications.ToastNotificationManager,Windows.UI.Notifications,ContentType=WindowsRuntime]|Out-Null
-        [Windows.Data.Xml.Dom.XmlDocument,Windows.Data.Xml.Dom.XmlDocument,ContentType=WindowsRuntime]|Out-Null
-        $xml=New-Object Windows.Data.Xml.Dom.XmlDocument
-        $xml.LoadXml('<toast><visual><binding template="ToastGeneric"><text>cc-connect 连接提醒</text><text>'+[Security.SecurityElement]::Escape($Body)+'</text></binding></visual></toast>')
-        [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Windows PowerShell').Show([Windows.UI.Notifications.ToastNotification]::new($xml))
+        $info=New-Object Diagnostics.ProcessStartInfo
+        $info.FileName=Join-Path $script:CcRoot 'bin\BackgroundLauncher.exe'
+        $info.UseShellExecute=$false;$info.CreateNoWindow=$true
+        $info.ArgumentList.Add('notice');$info.ArgumentList.Add($Body)
+        $process=[Diagnostics.Process]::Start($info)
+        try{
+            if(-not $process.WaitForExit(8000)){$process.Kill($true);throw 'Notification timed out.'}
+            if($process.ExitCode -ne 0){throw 'Notification failed.'}
+        }finally{$process.Dispose()}
     }catch{Add-Content -LiteralPath $LogPath -Encoding UTF8 -Value "$(Get-Date -Format o) notification unavailable; see status file."}
 }
 if(-not(Test-Path -LiteralPath $script:CcRuntime)){New-Item -ItemType Directory -Path $script:CcRuntime|Out-Null}
@@ -107,8 +112,11 @@ try{
                     $since=[DateTimeOffset]::FromUnixTimeMilliseconds([long]$bridge[0].pm2_env.pm_uptime).AddSeconds(-1);$lastProbe=[DateTime]::MinValue
                 }
                 $events=@(foreach($path in $LogPaths){foreach($line in @(Read-NewLogLines $path $cursors)){
-                    $event=ConvertFrom-CcLogLine $line
-                    if($event.time){$eventTime=[DateTimeOffset]::MinValue;if([DateTimeOffset]::TryParse($event.time,[ref]$eventTime) -and $eventTime -ge $since){$event}}
+                    # Skip old records before parsing potentially huge historic error bodies.
+                    if(-not $line.StartsWith('time=')){continue}
+                    $space=$line.IndexOf(' ');if($space -lt 6){continue}
+                    $eventTime=[DateTimeOffset]::MinValue
+                    if([DateTimeOffset]::TryParse($line.Substring(5,$space-5),[ref]$eventTime) -and $eventTime -ge $since){ConvertFrom-CcLogLine $line}
                 }})
                 foreach($event in ($events|Sort-Object {$_.time})){Apply-CcEvent $event $health $accounts $messages}
                 if(((Get-Date)-$lastProbe).TotalMinutes -ge 5){

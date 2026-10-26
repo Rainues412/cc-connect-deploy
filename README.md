@@ -1,6 +1,6 @@
 # cc-connect 本机部署
 
-维护日期：2026-10-26。主程序保持 cc-connect v1.4.1，两个微信项目使用 Claude Code + qwen3.7-max[1M]。
+维护日期：2026-10-26。主程序保持 cc-connect v1.4.1，两个微信项目使用 Claude Code + qwen3.8-max，仅修改桥接配置，不修改 Claude 全局模型。
 
 ## 当前入口
 
@@ -9,11 +9,13 @@
 AGENTS.md 和 SKILL.md 属于本机操作指引，只在本地维护，不纳入 GitHub 同步。
 
 - 正常恢复：运行 startup\pm2-cc-connect.bat。
-- 修复自启登记：用 Windows PowerShell 执行 scripts\setup.ps1。只校验现有依赖、注册自启和恢复实例，不安装软件、不重新扫码、不重建正常进程。
+- 修复自启登记：用已安装的 PowerShell 7 执行 scripts\setup.ps1。只校验现有依赖、注册自启和恢复实例，不安装软件、不重新扫码、不重建正常进程。
 - 首次安装或新增账号需要单独安装依赖并执行 cc-connect weixin setup，不在现有实例修复时自动进行。
 - HKCU Run/CCConnect 登录后启动桥接；脚本有互斥锁、有限重试，并等待监控发布新鲜状态。
 - 监控由 Windows 任务 CCConnect-Monitor 托管，登录触发，异常退出重试，并每分钟检查一次是否需要拉起；已运行时忽略重复实例，最长运行时间不限。已实测结束监控后可由周期触发自动恢复。PM2 只托管 wechat，避免原生 PowerShell 在本机 PM2 下反复退出。
 - 手动启动器与修复入口均可重复执行，不影响已在线的桥接和监控。
+
+登录自启和监控任务均通过 bin\BackgroundLauncher.exe（Windows GUI 子系统）运行，内部以 CreateNoWindow 启动本机已安装的 PowerShell 7，避免 Windows Terminal 忽略 -WindowStyle Hidden 后留下空白窗口，也避开本机 Windows PowerShell 5.1 的执行卡顿。启动器等待脚本退出并传递退出码；监控由 Job Object 管理，启动器被结束时其监控子进程一并结束，供计划任务恢复。startup、monitor、notice 均为固定入口，notice 只调用兼容的 Windows PowerShell 通知脚本，超时 8 秒。scripts\build-launcher.ps1 从现有 PowerShell 7 安装定位运行时并构建两个启动器，二进制和生成的主机路径源码仅在本地 bin 保留，不安装新依赖。
 
 ## 会话与权限
 
@@ -23,16 +25,16 @@ AGENTS.md 和 SKILL.md 属于本机操作指引，只在本地维护，不纳入
 
 ## 图片保护与错误恢复
 
-当前 3.7 路由文字请求成功，图片请求曾返回上游 503。未把该响应当作“模型永远不支持图片”的证明。
+原 3.7 路由文字请求成功，图片请求曾返回上游 503。2026-10-26 已验证 qwen3.8-max 的真实图片请求及完整 Claude 启动器链路，两个微信项目改用该模型。
 
 Claude 命令先经过 bin\ClaudeGuardLauncher.exe 无控制台启动器，再由 scripts\claude-image-guard.cjs 转发。启动器为本机 .NET Framework 编译的 Windows GUI 子系统小程序，内部 Node 和 Claude 均隐藏启动，避免每次微信提问弹出终端。缺少该二进制时，setup.ps1 通过 scripts\build-launcher.ps1 在 D 盘重建，不安装新依赖。
 
 图片处理方式：
-- 微信输入包含图片时直接给出保护提示，不把该输入送入 Claude 后端。
-- 仅对本桥接子进程增加 Read 常见图片文件的工具保护；不修改 Claude 全局 settings.json。
+- 显式指定已验证的 qwen3.8-max 时转发图片，并允许 Claude Read 图片；无模型参数、旧 3.7、opus 等未验证路由继续拦截图片。
+- Read 图片保护仅在未验证路由的桥接子进程中加载；不修改 Claude 全局 settings.json。
 - 图片前后的正常文字和权限协议正常转发，已有后端 session ID 保持不变。
-- 真实测试已验证：记住标记 → 图片被拦截 → 仍可答出标记。
-- 当前不提供独立 OCR/视觉模型。确有看图需求时需另行确认可用的视觉接口，识图结果作为文字交给主会话。
+- 真实测试已验证：记住 4921 → 识别图片为 Red, Blue → 同一会话仍回答 4921。
+- 图片请求直接使用微信项目的主模型，不额外调用 OCR 服务。接口故障仍需排查上游，不自动清空会话。
 
 已受历史图片/上下文错误影响的会话，先排查接口；确定只有某会话持续失败时在对应微信使用 /new，保留旧会话。429、超时和上游临时错误不能成为自动删除历史或重置全部会话的理由。
 

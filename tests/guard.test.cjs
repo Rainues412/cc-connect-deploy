@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { PassThrough } = require('node:stream');
-const { containsImage, toolDecision, createBridge, NOTICE } = require('../scripts/claude-image-guard.cjs');
+const { containsImage, toolDecision, createBridge, supportsImages, buildClaudeArgs, NOTICE } = require('../scripts/claude-image-guard.cjs');
 test('nested image and image_url are recognized, plain text is allowed', () => {
   assert.equal(containsImage([{type:'text',text:'image'}]),false);
   assert.equal(containsImage([{type:'image',source:{data:'not printed'}}]),true);
@@ -34,4 +34,30 @@ test('image between text turns preserves backend session and forwards control re
   assert.equal(starts,1);assert.equal(upstream,first+'\n'+second+'\n'+control+'\n');
   const result=output.trim().split('\n').map(JSON.parse).find(x=>x.type==='result');
   assert.equal(result.session_id,'existing-session');assert.equal(result.is_error,false);
+});
+
+test('only the verified explicit model enables vision and omits the image Read denial hook', () => {
+  for (const args of [[], ['--model','qwen3.7-max[1M]'], ['--model','opus'], ['--model','qwen3.8-max-other']]) {
+    assert.equal(supportsImages(args),false);
+    assert.ok(buildClaudeArgs(args).includes('--settings'));
+  }
+  const args=['--resume','existing','--model','qwen3.8-max'];
+  assert.equal(supportsImages(args),true);
+  assert.deepEqual(buildClaudeArgs(args),args);
+});
+
+test('verified vision model forwards image, text, and controls without changing the session', async () => {
+  let upstream='', output='';
+  const child={stdin:new PassThrough(),stdout:new PassThrough(),stderr:new PassThrough(),kill(){}};
+  child.stdin.on('data',b=>upstream+=b);
+  const bridge=createBridge({args:['--model','qwen3.8-max','--resume','preserved'],launch:()=>child,output:t=>output+=t,errorOutput:()=>{}});
+  const image=JSON.stringify({type:'user',message:{content:[{type:'image',source:{type:'base64',media_type:'image/png',data:'fixture'}}]}});
+  const text=JSON.stringify({type:'user',message:{content:'remember context'}});
+  const control=JSON.stringify({type:'control_response',response:{request_id:'r2'}});
+  bridge.accept(image);bridge.accept(text);bridge.accept(control);
+  child.stdout.write(JSON.stringify({type:'result',session_id:'preserved',result:'Red, Blue',is_error:false})+'\n');
+  await new Promise(r=>setImmediate(r));
+  assert.equal(upstream,image+'\n'+text+'\n'+control+'\n');
+  assert.equal(JSON.parse(output).session_id,'preserved');
+  assert.equal(JSON.parse(output).result,'Red, Blue');
 });

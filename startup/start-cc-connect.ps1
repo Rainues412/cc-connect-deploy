@@ -1,4 +1,5 @@
-﻿$ErrorActionPreference='Stop'
+﻿#requires -Version 7.0
+$ErrorActionPreference='Stop'
 . 'D:\coding\cc-connect-deploy\scripts\runtime-common.ps1'
 $binary=Join-Path $env:APPDATA 'npm\node_modules\cc-connect\bin\cc-connect.exe'
 $powerShell=Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'

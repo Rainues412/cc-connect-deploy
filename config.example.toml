@@ -11,7 +11,7 @@ type = "claudecode"
 [projects.agent.options]
 work_dir = "C:/Users/76879"
 mode = "default"
-model = "qwen3.7-max[1M]"
+model = "qwen3.8-max"
 cmd = "D:/coding/cc-connect-deploy/bin/ClaudeGuardLauncher.exe"
 [[projects.platforms]]
 type = "weixin"
@@ -29,7 +29,7 @@ type = "claudecode"
 [projects.agent.options]
 work_dir = "C:/Users/76879"
 mode = "default"
-model = "qwen3.7-max[1M]"
+model = "qwen3.8-max"
 cmd = "D:/coding/cc-connect-deploy/bin/ClaudeGuardLauncher.exe"
 [[projects.platforms]]
 type = "weixin"
