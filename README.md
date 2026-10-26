@@ -6,6 +6,8 @@
 
 源码统一在 D:\coding\cc-connect-deploy。已有配置和兼容入口在 C:\Users\76879\.claude\skills\cc-connect；兼容脚本调用 D 盘源码，不是独立的第二套部署。不得提交实际 config.toml、会话或 PM2 dump。
 
+AGENTS.md 和 SKILL.md 属于本机操作指引，只在本地维护，不纳入 GitHub 同步。
+
 - 正常恢复：运行 startup\pm2-cc-connect.bat。
 - 修复自启登记：用 Windows PowerShell 执行 scripts\setup.ps1。只校验现有依赖、注册自启和恢复实例，不安装软件、不重新扫码、不重建正常进程。
 - 首次安装或新增账号需要单独安装依赖并执行 cc-connect weixin setup，不在现有实例修复时自动进行。

@@ -28,6 +28,10 @@ config.toml
 # Local instructions and reproducible build output
 AGENTS.md
 **/AGENTS.md
+SKILL.md
+skill.md
+**/SKILL.md
+**/skill.md
 /bin/
 
 # Local diagnostics and backups
