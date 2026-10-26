@@ -1,3 +1,3 @@
 @echo off
-:: 手动启动 Token 监控脚本
-powershell -ExecutionPolicy Bypass -File "%USERPROFILE%\.claude\skills\cc-connect\token-monitor.ps1"
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\monitor\token-monitor.ps1"
+exit /b %errorlevel%

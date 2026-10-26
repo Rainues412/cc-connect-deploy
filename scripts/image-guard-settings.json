@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "PreToolUse": [{
+      "matcher": "Read",
+      "hooks": [{
+        "type": "command",
+        "command": "\"C:/Program Files/nodejs/node.exe\" \"D:/coding/cc-connect-deploy/scripts/claude-image-guard.cjs\" --tool-check",
+        "timeout": 10
+      }]
+    }]
+  }
+}

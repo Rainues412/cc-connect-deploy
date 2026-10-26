@@ -1,64 +1,40 @@
-# cc-connect 配置 — 双微信 + Claude Code
-# 配置目录: ~/.claude/skills/cc-connect/
-
+# Example only. Never overwrite an existing bound config with this file.
 language = "zh"
-
 [log]
 level = "info"
 
-# ========== 微信 1 ==========
 [[projects]]
 name = "wechat-claude"
-dir = "~"  # Agent 工作目录，可改成你的项目路径
-# 30 分钟无活动自动重置会话，防止历史污染累积
-reset_on_idle_mins = 30
-
+reset_on_idle_mins = 0
 [projects.agent]
 type = "claudecode"
-
+[projects.agent.options]
+work_dir = "C:/Users/76879"
+mode = "default"
+model = "qwen3.7-max[1M]"
+cmd = "D:/coding/cc-connect-deploy/bin/ClaudeGuardLauncher.exe"
 [[projects.platforms]]
 type = "weixin"
-
 [projects.platforms.options]
-# token 通过 `cc-connect weixin setup --project wechat-claude` 扫码获取
 token = ""
-allow_from = "*"  # 允许所有微信用户；可改为特定 ID: "user1@im.wechat"
 base_url = "https://ilinkai.weixin.qq.com"
 account_id = ""
+allow_from = "YOUR_FIRST_WECHAT_USER_ID"
 
-# ========== 微信 2 ==========
 [[projects]]
 name = "wechat-claude-2"
-dir = "~"
-# 30 分钟无活动自动重置会话，防止历史污染累积
-reset_on_idle_mins = 30
-
+reset_on_idle_mins = 0
 [projects.agent]
 type = "claudecode"
-
+[projects.agent.options]
+work_dir = "C:/Users/76879"
+mode = "default"
+model = "qwen3.7-max[1M]"
+cmd = "D:/coding/cc-connect-deploy/bin/ClaudeGuardLauncher.exe"
 [[projects.platforms]]
 type = "weixin"
-
 [projects.platforms.options]
-# token 通过 `cc-connect weixin setup --project wechat-claude-2` 扫码获取
 token = ""
-allow_from = "*"
 base_url = "https://ilinkai.weixin.qq.com"
 account_id = ""
-
-# ========== 添加更多微信 ==========
-# 复制上方任意一个 [[projects]] 块，修改 name 即可
-# 例如:
-# [[projects]]
-# name = "wechat-claude-3"
-# dir = "~"
-# reset_on_idle_mins = 30
-# [projects.agent]
-# type = "claudecode"
-# [[projects.platforms]]
-# type = "weixin"
-# [projects.platforms.options]
-# token = ""
-# allow_from = "*"
-# base_url = "https://ilinkai.weixin.qq.com"
-# account_id = ""
+allow_from = "YOUR_SECOND_WECHAT_USER_ID"
